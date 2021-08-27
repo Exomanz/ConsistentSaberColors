@@ -1,6 +1,5 @@
 ﻿using IPA.Utilities;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace ConsistentSaberColors

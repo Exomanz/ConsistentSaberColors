@@ -2,8 +2,6 @@
 using IPA;
 using IPALogger = IPA.Logging.Logger;
 using UnityEngine.SceneManagement;
-using System;
-using System.Linq;
 
 namespace ConsistentSaberColors
 {
@@ -23,7 +21,6 @@ namespace ConsistentSaberColors
         {
             if (HarmonyID is null) HarmonyID = new Harmony("bs.Exomanz.csc");
             HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-            Services.PlayerSaveDataBackupHelper.BackupSaveData();
         }
         [OnDisable] public void Disable()
         {
