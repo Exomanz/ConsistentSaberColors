@@ -1,7 +1,6 @@
-﻿using HarmonyLib;
-using IPA.Utilities;
+﻿using IPA.Utilities;
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Zenject;
@@ -9,41 +8,63 @@ using Zenject;
 #pragma warning disable CS0649
 namespace ConsistentSaberColors.Services
 {
-    // This could be done rather easily if it wasn't a MonoBehaviour, but for debugging's sake, it is.
+    /// <summary>
+    /// Master class for saber color managing in the menu.
+    /// All functionality here could very easily be done without using <see cref="MonoBehaviour"/>
+    /// but for the sake of debugging, I kept it as such. This may change in the future.
+    /// </summary>
     public class MenuSaberColorManager : MonoBehaviour
     {
-        Harmony Harmony => Plugin.HarmonyID;
-        [Inject] PlayerDataModel dataModel;
-#pragma warning restore CS0649
-        private static readonly Color defaultLeft = new Color(0.784314f, 0.078431f, 0.078431f, 1.0f);
-        private static readonly Color defaultRight = new Color(0.156863f, 0.556863f, 0.823529f, 1.0f);
-        private static Color leftSaber;
-        private static Color rightSaber;
+        #region Useful Stuff
+        [Inject] protected PlayerDataModel dataModel;
+        private static PlayerData playerData;
+        private static readonly Tuple<Color, Color> defaultPair = new Tuple<Color, Color>(
+            new Color(0.784314f, 0.078431f, 0.078431f, 1.0f), 
+            new Color(0.156863f, 0.556863f, 0.823529f, 1.0f));
+        private static Tuple<Color, Color> saberColorPair;
+        #endregion
 
         public void Start()
         {
             SetupPlayerData(dataModel);
-            SceneManager.activeSceneChanged += ActiveSceneChanged;
         }
 
-        private Task SetupPlayerData(PlayerDataModel dataModel)
+        private PlayerData SetupPlayerData(PlayerDataModel dataModel)
         {
-            PlayerData data = dataModel.GetField<PlayerData, PlayerDataModel>("_playerData");
+            playerData = dataModel.GetField<PlayerData, PlayerDataModel>("_playerData");
 
             // Make sure our PlayerData isn't null!
             // If it is and we try to read from it, the game will wipe any existing PlayerData.
-            if (data is null || dataModel is null)
+            if (playerData is null || dataModel is null)
             {
-                leftSaber = defaultLeft;
-                rightSaber = defaultRight;
-                throw new System.NullReferenceException("Cannot find a suitable PlayerData to read from!\nSetting default colors and exiting...");
+                saberColorPair = defaultPair;
+                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!\nSetting default colors and exiting...");
             }
 
-            // Check if our player is override default colors, and if so, grab those colors.
-            if (data.colorSchemesSettings.overrideDefaultColors)
+            RefreshColorsData();
+            Plugin.HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
+            SceneManager.activeSceneChanged += ActiveSceneChanged;
+            return dataModel.playerData;
+        }
+
+        private void ActiveSceneChanged(Scene arg0, Scene arg1)
+        {
+            if (arg1.name == "MainMenu")
             {
-                var dict = data.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
-                var key = data.colorSchemesSettings.selectedColorSchemeId;
+                UpdateSaberColors();
+                SceneManager.activeSceneChanged -= ActiveSceneChanged;
+            }
+        }
+
+        private static Tuple<Color, Color> RefreshColorsData()
+        {
+            Color leftSaber;
+            Color rightSaber;
+
+            if (playerData.colorSchemesSettings.overrideDefaultColors)
+            {
+                var dict = playerData.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
+                var key = playerData.colorSchemesSettings.selectedColorSchemeId;
                 var value = dict[key];
 
                 leftSaber = value.saberAColor;
@@ -51,41 +72,33 @@ namespace ConsistentSaberColors.Services
             }
             else
             {
-                leftSaber = defaultLeft;
-                rightSaber = defaultRight;
+                leftSaber = defaultPair.Item1;
+                rightSaber = defaultPair.Item2;
             }
 
-            // This is where all the magic happens, baby
-            Harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-            return null;
+            return saberColorPair = new Tuple<Color, Color>(leftSaber, rightSaber);
         }
 
-        private void ActiveSceneChanged(Scene arg0, Scene arg1)
+        public static void UpdateSaberColors()
         {
-            if (arg1.name == "MainMenu") UpdateColors();
-        }
+            RefreshColorsData();
 
-        public static void UpdateColors()
-        {
             var left = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
             var right = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
 
             foreach (var obj in left)
             {
                 var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberAColor", leftSaber);
+                colorScheme.SetField("_saberAColor", saberColorPair.Item1);
                 obj.SetColors();
             }
 
             foreach (var obj in right)
             {
                 var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberBColor", rightSaber);
+                colorScheme.SetField("_saberBColor", saberColorPair.Item2);
                 obj.SetColors();
             }
         }
-
-        public void OnDisable() => OnDestroy();
-        public void OnDestroy() => SceneManager.activeSceneChanged -= ActiveSceneChanged;
     }
 }

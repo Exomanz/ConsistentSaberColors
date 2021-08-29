@@ -22,8 +22,8 @@ namespace ConsistentSaberColors
 
         [OnEnable] public void Enable()
         {
-            // We cannot patch here, since that will call the patch too early and wipe any PlayerData,
-            // so we'll just prepare the HarmonyID.
+            // We cannot patch here, since that will call updates too early and wipe any PlayerData,
+            // so instead, we'll just prepare the HarmonyID.
             if (HarmonyID is null) HarmonyID = new Harmony("bs.Exomanz.saber-colors");
         }
 
@@ -36,9 +36,8 @@ namespace ConsistentSaberColors
 
     public class SaberColorManagerInstaller : Installer
     {
-        public override void InstallBindings()
-        {
-            Container.Bind<MenuSaberColorManager>().FromNewComponentOn(new UnityEngine.GameObject("MenuSaberColorSwapper")).AsSingle().NonLazy();
-        }
+        public override void InstallBindings() =>
+            Container.Bind<MenuSaberColorManager>().FromNewComponentOn(
+                new UnityEngine.GameObject("MenuSaberColorManager")).AsSingle().NonLazy();
     }
 }
