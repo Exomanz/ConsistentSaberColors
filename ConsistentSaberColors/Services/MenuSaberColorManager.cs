@@ -9,6 +9,7 @@ using Zenject;
 #pragma warning disable CS0649
 namespace ConsistentSaberColors.Services
 {
+    // This could be done rather easily if it wasn't a MonoBehaviour, but for debugging's sake, it is.
     public class MenuSaberColorManager : MonoBehaviour
     {
         Harmony Harmony => Plugin.HarmonyID;
