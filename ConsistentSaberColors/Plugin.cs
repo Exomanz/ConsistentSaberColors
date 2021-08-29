@@ -1,7 +1,9 @@
-﻿using HarmonyLib;
+﻿using ConsistentSaberColors.Services;
+using HarmonyLib;
 using IPA;
 using IPALogger = IPA.Logging.Logger;
-using UnityEngine.SceneManagement;
+using SiraUtil.Zenject;
+using Zenject;
 
 namespace ConsistentSaberColors
 {
@@ -11,26 +13,32 @@ namespace ConsistentSaberColors
         internal static IPALogger Log { get; private set; }
         internal static Harmony HarmonyID { get; private set; }
 
-        [Init] public Plugin(IPALogger logger)
+        [Init] public Plugin(IPALogger logger, Zenjector zenject)
         {
             Log = logger;
-            SceneManager.activeSceneChanged += ActiveSceneChanged;
+
+            zenject.OnApp<SaberColorManagerInstaller>();
         }
 
         [OnEnable] public void Enable()
         {
-            if (HarmonyID is null) HarmonyID = new Harmony("bs.Exomanz.csc");
-            HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
+            // We cannot patch here, since that will call the patch too early and wipe any PlayerData,
+            // so we'll just prepare the HarmonyID.
+            if (HarmonyID is null) HarmonyID = new Harmony("bs.Exomanz.saber-colors");
         }
+
         [OnDisable] public void Disable()
         {
             HarmonyID.UnpatchAll(HarmonyID.Id);
             HarmonyID = null;
         }
+    }
 
-        private void ActiveSceneChanged(Scene arg0, Scene arg1)
+    public class SaberColorManagerInstaller : Installer
+    {
+        public override void InstallBindings()
         {
-            if (arg1.name == "MainMenu") MenuSaberColorManager.UpdateColors();
+            Container.Bind<MenuSaberColorManager>().FromNewComponentOn(new UnityEngine.GameObject("MenuSaberColorSwapper")).AsSingle().NonLazy();
         }
     }
 }

@@ -1,60 +1,90 @@
-﻿using IPA.Utilities;
+﻿using HarmonyLib;
+using IPA.Utilities;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using Zenject;
 
-namespace ConsistentSaberColors
+#pragma warning disable CS0649
+namespace ConsistentSaberColors.Services
 {
-    public static class MenuSaberColorManager
+    public class MenuSaberColorManager : MonoBehaviour
     {
-        internal static Color defaultRight = new Color(0.156863f, 0.556863f, 0.823529f, 1.0f);
-        internal static Color defaultLeft = new Color(0.784314f, 0.078431f, 0.078431f, 1.0f);
+        Harmony Harmony => Plugin.HarmonyID;
+        [Inject] PlayerDataModel dataModel;
+#pragma warning restore CS0649
+        private static readonly Color defaultLeft = new Color(0.784314f, 0.078431f, 0.078431f, 1.0f);
+        private static readonly Color defaultRight = new Color(0.156863f, 0.556863f, 0.823529f, 1.0f);
+        private static Color leftSaber;
+        private static Color rightSaber;
 
-        public static void UpdateColors()
+        public void Start()
         {
-            PlayerDataModel PlayerDataModel;
-            PlayerData playerData;
+            SetupPlayerData(dataModel);
+            SceneManager.activeSceneChanged += ActiveSceneChanged;
+        }
 
-            PlayerDataModel = GameObject.Find("PlayerDataModel(Clone)")?.GetComponent<PlayerDataModel>();
-            playerData = PlayerDataModel!.GetField<PlayerData, PlayerDataModel>("_playerData");
+        private Task SetupPlayerData(PlayerDataModel dataModel)
+        {
+            PlayerData data = dataModel.GetField<PlayerData, PlayerDataModel>("_playerData");
 
-            if (playerData is null || PlayerDataModel is null) return;
-
-            // Create some empty Colors
-            Color colA;
-            Color colB;
-
-            // Check if our player is overriding colors, and if so, yoink those values
-            if (!playerData.colorSchemesSettings.overrideDefaultColors)
+            // Make sure our PlayerData isn't null!
+            // If it is and we try to read from it, the game will wipe any existing PlayerData.
+            if (data is null || dataModel is null)
             {
-                colA = defaultLeft;
-                colB = defaultRight;
+                leftSaber = defaultLeft;
+                rightSaber = defaultRight;
+                throw new System.NullReferenceException("Cannot find a suitable PlayerData to read from!\nSetting default colors and exiting...");
+            }
+
+            // Check if our player is override default colors, and if so, grab those colors.
+            if (data.colorSchemesSettings.overrideDefaultColors)
+            {
+                var dict = data.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
+                var key = data.colorSchemesSettings.selectedColorSchemeId;
+                var value = dict[key];
+
+                leftSaber = value.saberAColor;
+                rightSaber = value.saberBColor;
             }
             else
             {
-                var x = playerData.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
-                var key = playerData.colorSchemesSettings.selectedColorSchemeId;
-                var val = x[key];
-
-                colA = val.saberAColor;
-                colB = val.saberBColor;
+                leftSaber = defaultLeft;
+                rightSaber = defaultRight;
             }
 
-            var saberGlows_L = GameObject.Find("ControllerLeft/MenuHandle")!.GetComponentsInChildren<SetSaberGlowColor>();
-            var saberGlows_R = GameObject.Find("ControllerRight/MenuHandle")!.GetComponentsInChildren<SetSaberGlowColor>();
+            // This is where all the magic happens, baby
+            Harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
+            return null;
+        }
 
-            foreach (var x in saberGlows_L)
+        private void ActiveSceneChanged(Scene arg0, Scene arg1)
+        {
+            if (arg1.name == "MainMenu") UpdateColors();
+        }
+
+        public static void UpdateColors()
+        {
+            var left = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
+            var right = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
+
+            foreach (var obj in left)
             {
-                var colorScheme = x.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberAColor", colA);
-                x.SetColors();
+                var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
+                colorScheme.SetField("_saberAColor", leftSaber);
+                obj.SetColors();
             }
 
-            foreach (var y in saberGlows_R)
+            foreach (var obj in right)
             {
-                var colorScheme = y.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberBColor", colB);
-                y.SetColors();
+                var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
+                colorScheme.SetField("_saberBColor", rightSaber);
+                obj.SetColors();
             }
         }
+
+        public void OnDisable() => OnDestroy();
+        public void OnDestroy() => SceneManager.activeSceneChanged -= ActiveSceneChanged;
     }
 }
