@@ -21,7 +21,7 @@ There is no config for this mod--it comes enabled by default, and if you want to
 ## Notes
 This mod has a built-in PlayerData Local Backup service. The reason behind this is that during development, there were multiple instances that my PlayerData got wiped. 
 
-The issue that caused this is fixed, but since I don't want to be held responsible for any data loss, this mod will also create *5 local backups* of your data, which can be accessed at `Beat Saber\UserData\.PlayerDataBackups\`. The folders are sorted from Oldest to Newest, Top to Bottom.
+The issue that caused this is fixed, but since I don't want to be held responsible for any data loss, this mod will also create up to *5 local backups* of your data, which can be accessed at `Beat Saber\UserData\.PlayerDataBackups\`. The folders are sorted from Oldest to Newest, Top to Bottom.
 
 ## Restoring Wiped Data
 To restore wiped data, copy the contents of any Backup folder to `%AppData%\..\Hyperbolic Magnetism\Beat Saber`, and overwrite any existing files. **The most important files to restore would be `PlayerData.dat`, `AvatarData.dat`, `settings.cfg`, as well as all of their respective backup files (`.bak`)**. 
