@@ -2,6 +2,7 @@
 using HarmonyLib;
 using IPA;
 using IPALogger = IPA.Logging.Logger;
+using SiraUtil;
 using SiraUtil.Zenject;
 using Zenject;
 
@@ -16,8 +17,7 @@ namespace ConsistentSaberColors
         [Init] public Plugin(IPALogger logger, Zenjector zenject)
         {
             Log = logger;
-
-            zenject.OnApp<SaberColorManagerInstaller>();
+            zenject.OnApp<SaberColorManagerInstaller>().WithParameters(logger);
         }
 
         [OnEnable] public void Enable()
@@ -29,15 +29,23 @@ namespace ConsistentSaberColors
 
         [OnDisable] public void Disable()
         {
-            HarmonyID.UnpatchAll(HarmonyID.Id);
+            HarmonyID.UnpatchSelf();
             HarmonyID = null;
         }
     }
 
     public class SaberColorManagerInstaller : Installer
     {
-        public override void InstallBindings() =>
+        private readonly IPALogger _logger;
+        public SaberColorManagerInstaller(IPALogger logger) => _logger = logger;
+
+        public override void InstallBindings()
+        {
             Container.Bind<MenuSaberColorManager>().FromNewComponentOn(
                 new UnityEngine.GameObject("MenuSaberColorManager")).AsSingle().NonLazy();
+
+            Container.BindInterfacesAndSelfTo<SaveDataBackupProvider>().AsCached().Lazy();
+            Container.BindLoggerAsSiraLogger(_logger);
+        }
     }
 }
