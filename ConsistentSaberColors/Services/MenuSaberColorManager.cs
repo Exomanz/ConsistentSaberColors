@@ -1,65 +1,67 @@
 ﻿using IPA.Utilities;
+using SiraUtil.Tools;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Zenject;
 
-#pragma warning disable CS0649
 namespace ConsistentSaberColors.Services
 {
-    /// <summary>
-    /// Master class for saber color managing in the menu.
-    /// All functionality here could very easily be done without using <see cref="MonoBehaviour"/>
-    /// but for the sake of debugging, I kept it as such. This may change in the future.
-    /// </summary>
     public class MenuSaberColorManager : MonoBehaviour
-    {
-        #region Useful Stuff
-        [Inject] protected PlayerDataModel dataModel;
+    { 
+        [Inject] protected PlayerDataServicesProvider _dataProvider;
+        [Inject] protected static SiraLog _log;
+
         private static PlayerData playerData;
         private static readonly Tuple<Color, Color> defaultPair = new Tuple<Color, Color>(
             new Color(0.784314f, 0.078431f, 0.078431f, 1.0f), 
             new Color(0.156863f, 0.556863f, 0.823529f, 1.0f));
         private static Tuple<Color, Color> saberColorPair;
-        #endregion
+        private static SetSaberGlowColor[] leftSideSabers;
+        private static SetSaberGlowColor[] rightSideSabers;
 
-        public void Start()
+        [Inject] public void Construct(PlayerDataServicesProvider dataProvider, SiraLog log)
         {
-            SetupPlayerData(dataModel);
+            _log = log;
+            _dataProvider = dataProvider;
+
+            StartCoroutine(GetSaberObjectsAndCache());
+        }
+
+        private IEnumerator GetSaberObjectsAndCache()
+        {
+            leftSideSabers = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
+            rightSideSabers = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
+
+            yield return new WaitUntil(() => leftSideSabers != null && rightSideSabers != null);
+            SetupPlayerData(_dataProvider.currentPlayerDataModel);
+            saberColorPair = RefreshColorsData();
+            Plugin.HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
         }
 
         private PlayerData SetupPlayerData(PlayerDataModel dataModel)
         {
-            playerData = dataModel.GetField<PlayerData, PlayerDataModel>("_playerData");
-
             // Make sure our PlayerData isn't null!
             // If it is and we try to read from it, the game will wipe any existing PlayerData.
-            if (playerData is null || dataModel is null)
+            if (dataModel == null)
             {
                 saberColorPair = defaultPair;
-                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!\nSetting default colors and exiting...");
+                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!");
             }
 
-            RefreshColorsData();
-            Plugin.HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-            SceneManager.activeSceneChanged += ActiveSceneChanged;
-            return dataModel.playerData;
+            return playerData = dataModel.playerData;
         }
 
-        private void ActiveSceneChanged(Scene arg0, Scene arg1)
-        {
-            if (arg1.name == "MainMenu")
-            {
-                UpdateSaberColors();
-                SceneManager.activeSceneChanged -= ActiveSceneChanged;
-            }
-        }
-
-        private static Tuple<Color, Color> RefreshColorsData()
+        public static Tuple<Color, Color> RefreshColorsData()
         {
             Color leftSaber;
             Color rightSaber;
+
+            if (playerData == null)
+            {
+                throw new NullReferenceException("No suitable PlayerData to read from!");
+            }
 
             if (playerData.colorSchemesSettings.overrideDefaultColors)
             {
@@ -76,28 +78,30 @@ namespace ConsistentSaberColors.Services
                 rightSaber = defaultPair.Item2;
             }
 
-            return saberColorPair = new Tuple<Color, Color>(leftSaber, rightSaber);
+            saberColorPair = new Tuple<Color, Color>(leftSaber, rightSaber);
+            UpdateSaberColors(saberColorPair);
+
+            return null;
         }
 
-        public static void UpdateSaberColors()
+        private static void UpdateSaberColors(Tuple<Color, Color> colorPair)
         {
-            RefreshColorsData();
+            _log.Debug("Updating Saber Colors...");
 
-            var left = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
-            var right = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
-
-            foreach (var obj in left)
+            foreach (var obj in leftSideSabers)
             {
-                var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberAColor", saberColorPair.Item1);
+                var colorScheme = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
+                colorScheme.SetField("_saberAColor", colorPair.Item1);
                 obj.SetColors();
+                //_log.Logger.Info($"Set Color: {colorPair.Item1} on {obj.name} ({obj.transform.parent.parent.name})");
             }
 
-            foreach (var obj in right)
+            foreach (var obj in rightSideSabers)
             {
-                var colorScheme = obj.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberBColor", saberColorPair.Item2);
+                var colorScheme = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
+                colorScheme.SetField("_saberBColor", colorPair.Item2);
                 obj.SetColors();
+                //_log.Logger.Info($"Set Color: {colorPair.Item2} on {obj.name} ({obj.transform.parent.parent.name})");
             }
         }
     }

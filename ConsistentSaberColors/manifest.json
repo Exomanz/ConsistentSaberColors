@@ -2,12 +2,13 @@
   "$schema": "https://raw.githubusercontent.com/bsmg/BSIPA-MetadataFileSchema/master/Schema.json",
   "id": "ConsistentSaberColors",
   "name": "ConsistentSaberColors",
-  "author": "Exomanz, im-henri",
-  "version": "0.0.1",
-  "description": "PC Port of QonsistentSaberColors--allows for your menu pointers to be the same color as your in-game sabers!",
-  "gameVersion": "1.16.4",
+  "author": "Exomanz",
+  "version": "0.1.0",
+  "description": "A PC Port of QonsistentSaberColors, which allows for your menu pointers to be the same color as your in-game sabers!",
+  "gameVersion": "1.17.0",
     "dependsOn": {
-        "BSIPA": "^4.2.0"
+        "BSIPA": "^4.2.0",
+        "SiraUtil": "^2.5.7"
     },
     "conflictsWith": {
         "CustomMenuPointers": "*"

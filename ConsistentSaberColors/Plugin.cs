@@ -1,10 +1,9 @@
-﻿using ConsistentSaberColors.Services;
+﻿using ConsistentSaberColors.Installers;
 using HarmonyLib;
 using IPA;
 using IPALogger = IPA.Logging.Logger;
-using SiraUtil;
 using SiraUtil.Zenject;
-using Zenject;
+using System.Reflection;
 
 namespace ConsistentSaberColors
 {
@@ -12,40 +11,18 @@ namespace ConsistentSaberColors
     public class Plugin
     {
         internal static IPALogger Log { get; private set; }
-        internal static Harmony HarmonyID { get; private set; }
+        internal static Harmony HarmonyID { get; private set; } = new Harmony("bs.Exomanz.saber-colors");
 
         [Init] public Plugin(IPALogger logger, Zenjector zenject)
         {
             Log = logger;
-            zenject.OnApp<SaberColorManagerInstaller>().WithParameters(logger);
+
+            zenject.OnApp<PlayerDataServicesProviderInstaller>().WithParameters(Log);
+            zenject.On<ColorManagerInstaller>().Register<SaberColorManagerInstaller>();
         }
 
-        [OnEnable] public void Enable()
-        {
-            // We cannot patch here, since that will call updates too early and wipe any PlayerData,
-            // so instead, we'll just prepare the HarmonyID.
-            if (HarmonyID is null) HarmonyID = new Harmony("bs.Exomanz.saber-colors");
-        }
+        [OnEnable] public void Enable() { }
 
-        [OnDisable] public void Disable()
-        {
-            HarmonyID.UnpatchSelf();
-            HarmonyID = null;
-        }
-    }
-
-    public class SaberColorManagerInstaller : Installer
-    {
-        private readonly IPALogger _logger;
-        public SaberColorManagerInstaller(IPALogger logger) => _logger = logger;
-
-        public override void InstallBindings()
-        {
-            Container.Bind<MenuSaberColorManager>().FromNewComponentOn(
-                new UnityEngine.GameObject("MenuSaberColorManager")).AsSingle().NonLazy();
-
-            Container.BindInterfacesAndSelfTo<SaveDataBackupProvider>().AsCached().Lazy();
-            Container.BindLoggerAsSiraLogger(_logger);
-        }
+        [OnDisable] public void Disable() { HarmonyID.UnpatchSelf(); }
     }
 }
