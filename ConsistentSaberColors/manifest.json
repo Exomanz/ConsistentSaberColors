@@ -3,14 +3,11 @@
   "id": "ConsistentSaberColors",
   "name": "ConsistentSaberColors",
   "author": "Exomanz",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A PC Port of QonsistentSaberColors, which allows for your menu pointers to be the same color as your in-game sabers!",
-  "gameVersion": "1.17.0",
+  "gameVersion": "1.16.4",
     "dependsOn": {
         "BSIPA": "^4.2.0",
         "SiraUtil": "^2.5.7"
-    },
-    "conflictsWith": {
-        "CustomMenuPointers": "*"
     }
 }

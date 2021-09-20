@@ -5,8 +5,9 @@ namespace ConsistentSaberColors.HarmonyPatches
 {
     [HarmonyPatch(typeof(ColorsOverrideSettingsPanelController), MethodType.Normal)]
     [HarmonyPatch("HandleEditColorSchemeControllerDidFinish")]
-    public class HandleEditColorSchemeDidFinishPatch
+    internal class HandleEditColorSchemeDidFinishPatch
     {
-        [HarmonyPostfix] internal static void Postfix() => MenuSaberColorManager.RefreshColorsData();
+        [HarmonyPostfix] 
+        internal static void Postfix() => MenuSaberColorManager.RefreshColorsData();
     }
 }

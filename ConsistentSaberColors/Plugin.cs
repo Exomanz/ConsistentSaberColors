@@ -21,8 +21,14 @@ namespace ConsistentSaberColors
             zenject.On<ColorManagerInstaller>().Register<SaberColorManagerInstaller>();
         }
 
-        [OnEnable] public void Enable() { }
+        [OnEnable] public void Enable()
+        {
+            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), HarmonyID.Id);
+        }
 
-        [OnDisable] public void Disable() { HarmonyID.UnpatchSelf(); }
+        [OnDisable] public void Disable()
+        {
+            HarmonyID.UnpatchSelf();
+        }
     }
 }

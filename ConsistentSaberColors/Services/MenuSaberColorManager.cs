@@ -8,36 +8,38 @@ using Zenject;
 
 namespace ConsistentSaberColors.Services
 {
+    /// <summary>
+    /// Base class for updating menu saber colors. All data is retrieved from the
+    /// player's currently selected <see cref="ColorScheme"/> and their <see cref="PlayerDataModel"/>.
+    /// </summary>
     public class MenuSaberColorManager : MonoBehaviour
     { 
         [Inject] protected PlayerDataServicesProvider _dataProvider;
-        [Inject] protected static SiraLog _log;
+        [InjectOptional] protected static SiraLog _log;
 
         private static PlayerData playerData;
-        private static readonly Tuple<Color, Color> defaultPair = new Tuple<Color, Color>(
-            new Color(0.784314f, 0.078431f, 0.078431f, 1.0f), 
-            new Color(0.156863f, 0.556863f, 0.823529f, 1.0f));
-        private static Tuple<Color, Color> saberColorPair;
         private static SetSaberGlowColor[] leftSideSabers;
         private static SetSaberGlowColor[] rightSideSabers;
 
-        [Inject] public void Construct(PlayerDataServicesProvider dataProvider, SiraLog log)
-        {
-            _log = log;
-            _dataProvider = dataProvider;
+        // Fixes overwrites of color schemes
+        private static Dictionary<string, ColorScheme> dictionary;
+        private static string key;
 
-            StartCoroutine(GetSaberObjectsAndCache());
+        public void Start()
+        {
+            StartCoroutine(GetSaberObjectsAndCache(_dataProvider.currentPlayerDataModel));
         }
 
-        private IEnumerator GetSaberObjectsAndCache()
+        private IEnumerator GetSaberObjectsAndCache(PlayerDataModel dataModel)
         {
             leftSideSabers = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
             rightSideSabers = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
-
             yield return new WaitUntil(() => leftSideSabers != null && rightSideSabers != null);
-            SetupPlayerData(_dataProvider.currentPlayerDataModel);
-            saberColorPair = RefreshColorsData();
-            Plugin.HarmonyID.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
+
+            SetupPlayerData(dataModel);
+            yield return new WaitUntil(() => playerData != null);
+
+            RefreshColorsData();
         }
 
         private PlayerData SetupPlayerData(PlayerDataModel dataModel)
@@ -45,19 +47,14 @@ namespace ConsistentSaberColors.Services
             // Make sure our PlayerData isn't null!
             // If it is and we try to read from it, the game will wipe any existing PlayerData.
             if (dataModel == null)
-            {
-                saberColorPair = defaultPair;
-                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!");
-            }
+                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!\n" +
+                    "Aborting the method and leaving colors as default");
 
             return playerData = dataModel.playerData;
         }
 
-        public static Tuple<Color, Color> RefreshColorsData()
+        public static void RefreshColorsData()
         {
-            Color leftSaber;
-            Color rightSaber;
-
             if (playerData == null)
             {
                 throw new NullReferenceException("No suitable PlayerData to read from!");
@@ -65,41 +62,30 @@ namespace ConsistentSaberColors.Services
 
             if (playerData.colorSchemesSettings.overrideDefaultColors)
             {
-                var dict = playerData.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
-                var key = playerData.colorSchemesSettings.selectedColorSchemeId;
-                var value = dict[key];
-
-                leftSaber = value.saberAColor;
-                rightSaber = value.saberBColor;
-            }
-            else
-            {
-                leftSaber = defaultPair.Item1;
-                rightSaber = defaultPair.Item2;
+                dictionary = playerData.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
+                key = playerData.colorSchemesSettings.selectedColorSchemeId;
             }
 
-            saberColorPair = new Tuple<Color, Color>(leftSaber, rightSaber);
-            UpdateSaberColors(saberColorPair);
-
-            return null;
+            UpdateSaberColors();
         }
 
-        private static void UpdateSaberColors(Tuple<Color, Color> colorPair)
+        private static void UpdateSaberColors()
         {
-            _log.Debug("Updating Saber Colors...");
+            var colorScheme = dictionary[key];
+            //_log.Debug("Updating Saber Colors...");
 
             foreach (var obj in leftSideSabers)
             {
-                var colorScheme = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberAColor", colorPair.Item1);
+                var colorManager = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
+                colorManager.SetField("_colorScheme", colorScheme);
                 obj.SetColors();
                 //_log.Logger.Info($"Set Color: {colorPair.Item1} on {obj.name} ({obj.transform.parent.parent.name})");
             }
 
             foreach (var obj in rightSideSabers)
             {
-                var colorScheme = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager").GetField<ColorScheme, ColorManager>("_colorScheme");
-                colorScheme.SetField("_saberBColor", colorPair.Item2);
+                var colorManager = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
+                colorManager.SetField("_colorScheme", colorScheme);
                 obj.SetColors();
                 //_log.Logger.Info($"Set Color: {colorPair.Item2} on {obj.name} ({obj.transform.parent.parent.name})");
             }

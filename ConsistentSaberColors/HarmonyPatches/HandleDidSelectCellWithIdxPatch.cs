@@ -5,7 +5,7 @@ namespace ConsistentSaberColors.HarmonyPatches
 {
     [HarmonyPatch(typeof(ColorsOverrideSettingsPanelController), MethodType.Normal)]
     [HarmonyPatch("HandleDropDownDidSelectCellWithIdx")]
-    public class HandleDidSelectCellWithIdxPatch
+    internal class HandleDidSelectCellWithIdxPatch
     {
         [HarmonyPostfix]
         internal static void Postfix() => MenuSaberColorManager.RefreshColorsData();

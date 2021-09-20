@@ -5,7 +5,7 @@ namespace ConsistentSaberColors.HarmonyPatches
 {
     [HarmonyPatch(typeof(ColorsOverrideSettingsPanelController), MethodType.Normal)]
     [HarmonyPatch("HandleOverrideColorsToggleValueChanged")]
-    public class ToggleValueChangedPatch
+    internal class ToggleValueChangedPatch
     {
         [HarmonyPostfix]
         internal static void Postfix() => MenuSaberColorManager.RefreshColorsData();
