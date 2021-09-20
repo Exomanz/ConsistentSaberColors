@@ -16,7 +16,6 @@ There is no config for this mod--it comes enabled by default, and if you want to
 ## Roadpath
 - Realtime color updates when editing color schemes
 - Internal code cleanup
-- Support for CustomMenuPointers (right now it's listed as an incompatibility, so this mod will be ignored if CMP is installed)
 
 ## Notes
 This mod has a built-in PlayerData Local Backup service. The reason behind this is that during development, there were multiple instances that my PlayerData got wiped. 
