@@ -18,14 +18,12 @@ There is no config for this mod--it comes enabled by default, and if you want to
 - Internal code cleanup
 
 ## Notes
-This mod has a built-in PlayerData Local Backup service. The reason behind this is that during development, there were multiple instances that my PlayerData got wiped. 
+This mod has a built-in PlayerData Local Backup service. The reason behind this is that during development, there were multiple instances that my PlayerData got wiped. The issue that caused this is fixed, but since I don't want to be held responsible for any data loss, this mod will also create up to *5 local backups* of your data, which can be accessed at `Beat Saber\UserData\.PlayerDataBackups\`. The folders are sorted from Oldest to Newest, Top to Bottom. 
 
-The issue that caused this is fixed, but since I don't want to be held responsible for any data loss, this mod will also create up to *5 local backups* of your data, which can be accessed at `Beat Saber\UserData\.PlayerDataBackups\`. The folders are sorted from Oldest to Newest, Top to Bottom.
+These files do not store any of your online scores since ScoreSaber leaderboards is completely separate from Beat Saber. These files store information such as local scores, some settings, and favorited songs, so if you aren't concerned about losing these, then this probably won't concern you.
 
 ## Restoring Wiped Data
 To restore wiped data, copy the contents of any Backup folder to `%AppData%\..\Hyperbolic Magnetism\Beat Saber`, and overwrite any existing files. **The most important files to restore would be `PlayerData.dat`, `AvatarData.dat`, `settings.cfg`, as well as all of their respective backup files (`.bak`)**. 
-
-You do not need to restore every single file, as some are refreshed on startup, provided by other mods, or just aren't used anymore, but it's good practice to do so anyways.
 
 ## Bugs? Feature Request? Suggestion?
 You can either open an issue here on GitHub, or open your own pull request if you want to develop it yourself! You can also reach me on Discord, **Exomanz#8083**
