@@ -3,6 +3,7 @@ using SiraUtil.Tools;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Reflection;
 using UnityEngine;
 using Zenject;
 
@@ -19,11 +20,11 @@ namespace ConsistentSaberColors.Services
         [Inject] protected PlayerDataServicesProvider _dataProvider = null!;
         [Inject] protected SiraLog _log = null!;
 
-        private PlayerData? playerData = null!;
-        private SetSaberGlowColor?[] leftSideSabers = null!;
-        private SetSaberGlowColor?[] rightSideSabers = null!;
-        private Dictionary<string, ColorScheme>? dictionary = null!;
-        private string? key = null!;
+        private PlayerData playerData = null!;
+        private SetSaberGlowColor[] leftSideSabers = null!;
+        private SetSaberGlowColor[] rightSideSabers = null!;
+        private Dictionary<string, ColorScheme> dictionary = null!;
+        private string key = null!;
 
         public void Start()
         {
@@ -42,7 +43,9 @@ namespace ConsistentSaberColors.Services
 
             if (!success)
             {
-                throw new NullReferenceException("No PlayerData to read from! Aborting the method and leaving colors as-is.");
+                throw new ArgumentException("Cannot find a PlayerData to read from." +
+                    "\nLeaving the colors as-is and aborting the method." +
+                    "\nNOTE: As long as you have data backups enabled, your data is safe!");
             }
 
             RefreshColorsData();
@@ -51,7 +54,7 @@ namespace ConsistentSaberColors.Services
         private Task SetupPlayerData(PlayerDataModel dataModel, out bool success)
         {
             // Make sure our PlayerData isn't null!
-            // If it is and we try to read from it, the game will wipe any existing PlayerData.
+            // If it's null, the game generates a new one on the fly and overwrites the existing one regardless of whether it exists or not.
             if (dataModel is null)
             {
                 success = false;
@@ -68,8 +71,8 @@ namespace ConsistentSaberColors.Services
         {
             if (playerData!.colorSchemesSettings.overrideDefaultColors)
             {
-                dictionary = playerData!.colorSchemesSettings?.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
-                key = playerData!.colorSchemesSettings?.selectedColorSchemeId;
+                dictionary = playerData!.colorSchemesSettings?.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict")!;
+                key = playerData!.colorSchemesSettings?.selectedColorSchemeId!;
             }
 
             UpdateSaberColors();

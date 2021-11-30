@@ -1,6 +1,8 @@
 ﻿using ConsistentSaberColors.Installers;
 using HarmonyLib;
 using IPA;
+using IPA.Config.Stores;
+using IPAConfig = IPA.Config.Config;
 using IPALogger = IPA.Logging.Logger;
 using SiraUtil.Zenject;
 using System;
@@ -14,36 +16,34 @@ namespace ConsistentSaberColors
     {
         internal static IPALogger Log { get; private set; } = null!;
         internal static Harmony HarmonyID { get; private set; } = new Harmony("bs.Exomanz.saber-colors")!;
+        internal static SaberColorConfig Config { get; private set; } = null!;
 
-        private bool fpfc = false;
+        public static bool fpfc = false;
 
-        [Init] public Plugin(IPALogger logger, Zenjector zenject)
+        [Init] public Plugin(IPALogger logger, IPAConfig config, Zenjector zenject)
         {
-            Log = logger;
+            Log = logger!;
+            Config = config!.Generated<SaberColorConfig>();
 
             string[] args = Environment.GetCommandLineArgs();
 
-            if (args.Any(x => x!.ToLower().Contains("fpfc")))
+            if (args.Any(arg => arg!.ToLower().Contains("fpfc")))
             {
+                Log.Notice("FPFC is enabled. PlayerData backup will still occur (if enabled), but the main color service will not.");
                 fpfc = true;
-                Log?.Notice("FPFC is enabled. PlayerData backup will still occur, but the main color service will not be enabled.");
             }
 
-            zenject.OnApp<PlayerDataServicesProviderInstaller>().WithParameters(Log);
-
-            if (fpfc) return;
+            zenject.OnApp<PlayerDataServicesProviderInstaller>().WithParameters(Log, Config);
             zenject.On<ColorManagerInstaller>().Register<SaberColorManagerInstaller>();
         }
 
         [OnEnable] public void Enable()
         {
-            if (fpfc) return;
-            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), HarmonyID.Id);
+            HarmonyID.PatchAll(Assembly.GetExecutingAssembly());
         }
 
         [OnDisable] public void Disable()
         {
-            if (fpfc) return;
             HarmonyID.UnpatchSelf();
         }
     }
