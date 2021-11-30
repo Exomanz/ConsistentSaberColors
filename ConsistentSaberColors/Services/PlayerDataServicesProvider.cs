@@ -24,16 +24,25 @@ namespace ConsistentSaberColors.Services
             _log = log!;
             _config = conf!;
 
-            if (conf.EnableBackups)
-            {
-                Task.Factory.StartNew(() => CreateCopyOfDataAsync());
-            }
-            else
+            if (!conf.EnableBackups)
             {
                 _log!.Logger.Error("NOTICE: The EnableBackups setting has been disabled.\n" +
+                    "The copies that you alreday made will NOT be effected.\n" + 
                     "Although this mod is safe and data loss is extremely rare, disabling this is not recommended.\n" +
-                    "By doing so, you accept the risks and understand that I am no longer responsible for any data loss.");
+                    "By disabling this, you accept the risks and understand that I am no longer responsible for any data loss.");
+                return;
             }
+
+            if (conf.BackupLimit == 0)
+            {
+                _log!.Logger.Error("NOTICE: BackupLimit is set to 0. This will act as though EnableBackups is disabled.\n" +
+                    "The copies that you already have will NOT be effected.\n" +
+                    "Although this mod is safe and data loss is extremely rare, doing this is not recommended.\n" + 
+                    "By doing so, you accept the risks and understand that I am no longer responsible for any data loss.");
+                return;
+            }
+
+            Task.Factory.StartNew(() => CreateCopyOfDataAsync());
         }
 
         private async Task CreateCopyOfDataAsync()
@@ -58,7 +67,7 @@ namespace ConsistentSaberColors.Services
                     File.Copy(f, destFile, true);
                 }
 
-                _log!.Logger.Info($"[LEGACY] Data backup made at {DateTime.Now} and stored at {copyTo.Replace(UnityGame.InstallPath, "")}");
+                _log!.Logger.Info($"Data backup made at {DateTime.Now} and stored at {copyTo.Replace(UnityGame.InstallPath, "")}");
             }
 
             CheckFolderCapacity(UnityGame.UserDataPath + @"\_PlayerDataBackups");
@@ -76,8 +85,13 @@ namespace ConsistentSaberColors.Services
                 _config.BackupLimit = 25;
             }
 
-            if (dirs?.Length > _config.BackupLimit)
-                Directory.Delete(dirs?[0], true);
+            if (dirs?.Length > _config.BackupLimit && _config.BackupLimit != 0)
+            {
+                for (int i = 0; i < dirs?.Length - _config.BackupLimit; i++)
+                {
+                    Directory.Delete(dirs?[i], true);
+                }
+            }
         }
     }
 }

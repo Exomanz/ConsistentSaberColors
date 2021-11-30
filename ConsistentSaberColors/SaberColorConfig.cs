@@ -10,6 +10,6 @@
         /// <summary>
         /// Specifies the amount of backups you wish to have. The maximum for this value is 25.
         /// </summary>
-        public virtual int BackupLimit { get; set; } = 5;
+        public virtual uint BackupLimit { get; set; } = 5;
     }
 }
