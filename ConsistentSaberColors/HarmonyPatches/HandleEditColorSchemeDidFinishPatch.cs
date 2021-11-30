@@ -8,6 +8,6 @@ namespace ConsistentSaberColors.HarmonyPatches
     internal class HandleEditColorSchemeDidFinishPatch
     {
         [HarmonyPostfix] 
-        internal static void Postfix() => MenuSaberColorManager.RefreshColorsData();
+        internal static void Postfix() => MenuSaberColorManager.Instance?.RefreshColorsData();
     }
 }

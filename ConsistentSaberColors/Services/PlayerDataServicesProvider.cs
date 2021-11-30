@@ -1,41 +1,37 @@
 ﻿using IPA.Utilities;
+using IPA.Utilities.Async;
 using UnityEngine;
 using SiraUtil.Tools;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace ConsistentSaberColors.Services
 {
     /// <summary>
-    /// Hosts a simple set of functions that creates local backups of your <see cref="PlayerData"/>.
-    /// In the event that your data gets wiped, you can find 5 local backups at the <see cref="UnityGame.UserDataPath"/>
+    /// Class that creates up to 5 local backups of your <see cref="PlayerData"/>. These backups can be found in the "_PlayerDataBackups" folder in your <see cref="UnityGame.UserDataPath"/> path.
     /// </summary>
     public class PlayerDataServicesProvider
     {
-        public PlayerDataModel currentPlayerDataModel;
-        private SiraLog _log;
+        public PlayerDataModel currentPlayerDataModel = null!;
+        private SiraLog _log = null!;
 
         public PlayerDataServicesProvider(PlayerDataModel dataModel, SiraLog log)
         {
-            _log = log;
+            currentPlayerDataModel = dataModel!;
+            _log = log!;
 
-            currentPlayerDataModel = dataModel;
-            CreateCopyOfData(dataModel);
+            UnityMainThreadTaskScheduler.Factory.StartNew(() => CreateCopyOfDataAsync());
         }
 
-        private void CreateCopyOfData(PlayerDataModel dataModel)
+        private Task CreateCopyOfDataAsync()
         {
-            if (dataModel == null)
-            {
-                throw new NullReferenceException("Cannot find a suitable PlayerDataModel (PlayerData) to read from!");
-            }
+            string fileName;
+            string destFile;
 
-            string fileName = string.Empty;
-            string destFile = string.Empty;
-
-            // Both of these strings should be compatbile across ALL drive configurations.
             string copyFrom = Application.persistentDataPath;
             string copyTo = UnityGame.UserDataPath + @"\_PlayerDataBackups\" + DateTime.Now.ToFileTimeUtc();
+
             if (Directory.Exists(copyFrom))
             {
                 Directory.CreateDirectory(copyTo);
@@ -47,10 +43,12 @@ namespace ConsistentSaberColors.Services
                     destFile = Path.Combine(copyTo, fileName);
                     File.Copy(f, destFile, true);
                 }
-                _log.Logger.Info($"Data backup made at {DateTime.Now} and stored at {copyTo.Replace(UnityGame.InstallPath, "")}");
+
+                _log!.Logger.Info($"Data backup made at {DateTime.Now} and stored at {copyTo.Replace(UnityGame.InstallPath, "")}");
             }
 
             CheckFolderCapacity(UnityGame.UserDataPath + @"\_PlayerDataBackups");
+            return Task.CompletedTask;
         }
 
         private void CheckFolderCapacity(string path)
@@ -58,8 +56,8 @@ namespace ConsistentSaberColors.Services
             if (!Directory.Exists(path)) throw new ArgumentException("No backup folder found!");
             string[] dirs = Directory.GetDirectories(path);
 
-            if (dirs.Length > 5)
-                Directory.Delete(dirs[0], true);
+            if (dirs?.Length > 5)
+                Directory.Delete(dirs?[0], true);
         }
     }
 }

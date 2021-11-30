@@ -1,8 +1,8 @@
 ﻿using IPA.Utilities;
 using SiraUtil.Tools;
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
 
@@ -13,81 +13,86 @@ namespace ConsistentSaberColors.Services
     /// player's currently selected <see cref="ColorScheme"/> and their <see cref="PlayerDataModel"/>.
     /// </summary>
     public class MenuSaberColorManager : MonoBehaviour
-    { 
-        [Inject] protected PlayerDataServicesProvider _dataProvider;
-        [InjectOptional] protected static SiraLog _log;
+    {
+        public static MenuSaberColorManager Instance { get; private set; } = null!;
 
-        private static PlayerData playerData;
-        private static SetSaberGlowColor[] leftSideSabers;
-        private static SetSaberGlowColor[] rightSideSabers;
+        [Inject] protected PlayerDataServicesProvider _dataProvider = null!;
+        [Inject] protected SiraLog _log = null!;
 
-        // Fixes overwrites of color schemes
-        private static Dictionary<string, ColorScheme> dictionary;
-        private static string key;
+        private PlayerData? playerData = null!;
+        private SetSaberGlowColor?[] leftSideSabers = null!;
+        private SetSaberGlowColor?[] rightSideSabers = null!;
+        private Dictionary<string, ColorScheme>? dictionary = null!;
+        private string? key = null!;
 
         public void Start()
         {
-            StartCoroutine(GetSaberObjectsAndCache(_dataProvider.currentPlayerDataModel));
+            Instance = this;
+            GetSaberObjectsAndCacheAsync(_dataProvider.currentPlayerDataModel);
         }
 
-        private IEnumerator GetSaberObjectsAndCache(PlayerDataModel dataModel)
+        public async void GetSaberObjectsAndCacheAsync(PlayerDataModel dataModel)
         {
-            leftSideSabers = GameObject.Find("ControllerLeft/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
-            rightSideSabers = GameObject.Find("ControllerRight/MenuHandle")?.GetComponentsInChildren<SetSaberGlowColor>();
-            yield return new WaitUntil(() => leftSideSabers != null && rightSideSabers != null);
+            VRController[] controllers = FindObjectsOfType<VRController>();
 
-            SetupPlayerData(dataModel);
-            yield return new WaitUntil(() => playerData != null);
+            leftSideSabers = controllers![1].GetComponentsInChildren<SetSaberGlowColor>();
+            rightSideSabers = controllers![0].GetComponentsInChildren<SetSaberGlowColor>();
+
+            await SetupPlayerData(dataModel!, out bool success);
+
+            if (!success)
+            {
+                throw new NullReferenceException("No PlayerData to read from! Aborting the method and leaving colors as-is.");
+            }
 
             RefreshColorsData();
         }
 
-        private PlayerData SetupPlayerData(PlayerDataModel dataModel)
+        private Task SetupPlayerData(PlayerDataModel dataModel, out bool success)
         {
             // Make sure our PlayerData isn't null!
             // If it is and we try to read from it, the game will wipe any existing PlayerData.
-            if (dataModel == null)
-                throw new NullReferenceException("Cannot find a suitable PlayerData to read from!\n" +
-                    "Aborting the method and leaving colors as default");
-
-            return playerData = dataModel.playerData;
-        }
-
-        public static void RefreshColorsData()
-        {
-            if (playerData == null)
+            if (dataModel is null)
             {
-                throw new NullReferenceException("No suitable PlayerData to read from!");
+                success = false;
+                return Task.CompletedTask;
             }
 
-            if (playerData.colorSchemesSettings.overrideDefaultColors)
+            playerData = dataModel?.playerData!;
+            success = true;
+
+            return Task.CompletedTask;
+        }
+
+        public void RefreshColorsData()
+        {
+            if (playerData!.colorSchemesSettings.overrideDefaultColors)
             {
-                dictionary = playerData.colorSchemesSettings.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
-                key = playerData.colorSchemesSettings.selectedColorSchemeId;
+                dictionary = playerData!.colorSchemesSettings?.GetField<Dictionary<string, ColorScheme>, ColorSchemesSettings>("_colorSchemesDict");
+                key = playerData!.colorSchemesSettings?.selectedColorSchemeId;
             }
 
             UpdateSaberColors();
         }
 
-        private static void UpdateSaberColors()
+        private void UpdateSaberColors()
         {
-            var colorScheme = dictionary[key];
-            //_log.Debug("Updating Saber Colors...");
-
+            var colorScheme = dictionary![key!];
+#if DEBUG
+            _log.Logger.Notice("Updating Saber Colors...");
+#endif
             foreach (var obj in leftSideSabers)
             {
-                var colorManager = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
-                colorManager.SetField("_colorScheme", colorScheme);
-                obj.SetColors();
-                //_log.Logger.Info($"Set Color: {colorPair.Item1} on {obj.name} ({obj.transform.parent.parent.name})");
+                var colorManager = obj?.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
+                colorManager?.SetField("_colorScheme", colorScheme);
+                obj?.SetColors();
             }
 
             foreach (var obj in rightSideSabers)
             {
-                var colorManager = obj!.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
-                colorManager.SetField("_colorScheme", colorScheme);
-                obj.SetColors();
-                //_log.Logger.Info($"Set Color: {colorPair.Item2} on {obj.name} ({obj.transform.parent.parent.name})");
+                var colorManager = obj?.GetField<ColorManager, SetSaberGlowColor>("_colorManager");
+                colorManager?.SetField("_colorScheme", colorScheme);
+                obj?.SetColors();
             }
         }
     }
